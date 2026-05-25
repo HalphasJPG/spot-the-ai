@@ -274,6 +274,13 @@
       font-weight: 800;
       font-size: 1.1rem;
       letter-spacing: -0.02em;
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .topbar-logo:hover {
+      transform: translateY(-1px);
+      opacity: 0.85;
     }
 
     .topbar-logo svg { width: 28px; height: 28px; }
@@ -547,6 +554,136 @@
       .vs-badge { display: none; }
       .hero-heading { font-size: 2rem; }
     }
+
+    /* ════════════════════════
+       SCOREBOARD PAGE
+    ════════════════════════ */
+    #scoreboard {
+      display: none;
+      min-height: 100vh;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+      z-index: 10;
+    }
+
+    .score-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 3rem 2.5rem;
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+      box-shadow: 0 30px 70px rgba(0,0,0,0.5);
+      border-color: rgba(200,255,0,0.15);
+      animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .score-card::after {
+      content: '';
+      position: absolute;
+      top: -100px; left: -100px;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,255,0,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .score-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--text) 30%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .score-subtitle {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+
+    .score-display {
+      font-size: 4.5rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 0.75rem;
+      color: var(--accent);
+      text-shadow: 0 0 30px rgba(200,255,0,0.25);
+    }
+
+    .score-display span {
+      color: var(--text);
+      font-size: 2.5rem;
+      opacity: 0.5;
+    }
+
+    .score-comment {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--text);
+      opacity: 0.8;
+      margin-bottom: 2.5rem;
+      padding: 0 1rem;
+    }
+
+    .score-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .score-btn {
+      width: 100%;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .score-btn-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 0.9rem 2rem;
+      border-radius: 4px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .score-btn.primary .score-btn-inner {
+      background: var(--accent);
+      color: #0b0c0e;
+    }
+
+    .score-btn.primary:hover .score-btn-inner {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(200,255,0,0.28);
+    }
+
+    .score-btn.secondary .score-btn-inner {
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .score-btn.secondary:hover .score-btn-inner {
+      background: rgba(255,255,255,0.08);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
@@ -636,7 +773,7 @@
   <div id="game">
     <!-- Top bar -->
     <div class="topbar">
-      <div class="topbar-logo">
+      <div class="topbar-logo" onclick="returnToMenu()">
         <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="64" height="64" rx="14" fill="#13151a"/>
           <ellipse cx="32" cy="32" rx="22" ry="14" stroke="#c8ff00" stroke-width="2"/>
@@ -717,45 +854,120 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════
+       SCOREBOARD PAGE
+  ════════════════════════════ -->
+  <section id="scoreboard">
+    <div class="score-card">
+      <h2 class="score-title">Challenge Complete</h2>
+      <div class="score-subtitle">Scoreboard</div>
+      <div class="score-display"><span id="scoreboard-score">0</span><span>/5</span></div>
+      <p class="score-comment" id="scoreboard-comment">You've finished the Spot the AI Image challenge!</p>
+      
+      <div class="score-btns">
+        <button class="score-btn primary" onclick="startGame()">
+          <div class="score-btn-inner">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"></path>
+            </svg>
+            Play Again
+          </div>
+        </button>
+        <button class="score-btn secondary" onclick="returnToMenu()">
+          <div class="score-btn-inner">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"></path>
+            </svg>
+            Return to Menu!
+          </div>
+        </button>
+      </div>
+    </div>
+  </section>
+
   <script>
     // ─────────────────────────────────────────────
     // GAME DATA
     // Add your rounds here. Each round has:
     //   - subject: displayed as the prompt
     //   - realSide: 'left' or 'right' — which card holds the real photo
-    //   - leftSrc / rightSrc: image URLs (replace with your own)
+    //   - leftSrc / rightSrc: image URLs
     // ─────────────────────────────────────────────
     const rounds = [
       {
-        subject: "A cat sitting in afternoon light",
+        subject: "A fluffy cat sitting in dramatic afternoon light",
         realSide: "left",
-        leftSrc:  "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=700&q=80",  // real
-        rightSrc: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Cat_November_2010-1a.jpg/640px-Cat_November_2010-1a.jpg", // swap with AI image
+        leftSrc:  "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=700&q=80",
+        rightSrc: "images/cat1_ai.png"
       },
-      // Add more rounds below following the same structure:
-      // {
-      //   subject: "A mountain landscape at sunset",
-      //   realSide: "right",
-      //   leftSrc:  "URL_TO_AI_IMAGE",
-      //   rightSrc: "URL_TO_REAL_IMAGE",
-      // },
+      {
+        subject: "A sleek black cat with glowing green eyes on a velvet cushion",
+        realSide: "right",
+        leftSrc:  "images/cat2_ai.png",
+        rightSrc: "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=700&q=80"
+      },
+      {
+        subject: "An orange tabby cat sleeping curled up on a rustic wooden floor",
+        realSide: "left",
+        leftSrc:  "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=700&q=80",
+        rightSrc: "images/cat3_ai.png"
+      },
+      {
+        subject: "A majestic long-haired white cat sitting near a window in the rain",
+        realSide: "right",
+        leftSrc:  "images/cat4_ai.png",
+        rightSrc: "https://images.unsplash.com/photo-1513360309081-36f5e878fc9e?w=700&q=80"
+      },
+      {
+        subject: "A playful kitten chasing a red ball of yarn on a cozy rug",
+        realSide: "left",
+        leftSrc:  "https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=700&q=80",
+        rightSrc: "images/cat5_ai.png"
+      }
     ];
 
     let currentRound = 0;
     let score = 0;
     let streak = 0;
     let answered = false;
+    let activeRounds = [];
+
+    function shuffleRounds() {
+      activeRounds = rounds.map(r => {
+        const swap = Math.random() > 0.5;
+        return {
+          subject: r.subject,
+          realSide: swap ? (r.realSide === 'left' ? 'right' : 'left') : r.realSide,
+          leftSrc: swap ? r.rightSrc : r.leftSrc,
+          rightSrc: swap ? r.leftSrc : r.rightSrc
+        };
+      });
+
+      for (let i = activeRounds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [activeRounds[i], activeRounds[j]] = [activeRounds[j], activeRounds[i]];
+      }
+    }
 
     function startGame() {
       document.getElementById('landing').style.display = 'none';
+      document.getElementById('scoreboard').style.display = 'none';
       const gameEl = document.getElementById('game');
       gameEl.style.display = 'flex';
+      
+      currentRound = 0;
+      score = 0;
+      streak = 0;
+      document.getElementById('score-val').textContent = score;
+      document.getElementById('streak-val').textContent = streak;
+      
+      shuffleRounds();
       loadRound(0);
     }
 
     function loadRound(index) {
       answered = false;
-      const round = rounds[index];
+      const round = activeRounds[index];
 
       // Reset card states
       const cardL = document.getElementById('card-left');
@@ -764,11 +976,11 @@
       cardR.className = 'card';
 
       // Update prompt
-      document.getElementById('round-label').textContent = `Round ${index + 1} of ${rounds.length}`;
+      document.getElementById('round-label').textContent = `Round ${index + 1} of ${activeRounds.length}`;
       document.getElementById('prompt-text').textContent =
         `Which image is a real photograph of: ${round.subject}?`;
 
-      // Load images — swap placeholders for real <img> tags
+      // Load images
       setCardImage(cardL, round.leftSrc, 'Image A');
       setCardImage(cardR, round.rightSrc, 'Image B');
 
@@ -777,7 +989,6 @@
     }
 
     function setCardImage(card, src, label) {
-      // Remove existing placeholder or img
       const existing = card.querySelector('.img-placeholder, img.card-img');
       if (existing) existing.remove();
 
@@ -785,7 +996,6 @@
       img.className = 'card-img';
       img.src = src;
       img.alt = label;
-      // Insert before the footer
       card.insertBefore(img, card.querySelector('.card-footer'));
     }
 
@@ -793,7 +1003,7 @@
       if (answered) return;
       answered = true;
 
-      const round = rounds[currentRound];
+      const round = activeRounds[currentRound];
       const correct = side === round.realSide;
 
       const cardL = document.getElementById('card-left');
@@ -815,25 +1025,55 @@
 
       // Show banner
       const banner = document.getElementById('result-banner');
-      document.getElementById('result-icon').textContent  = correct ? '🎉' : '❌';
+      document.getElementById('result-icon').textContent  = '🤔';
       document.getElementById('result-title').textContent = correct ? 'Correct!' : 'Wrong!';
       document.getElementById('result-desc').textContent  = correct
         ? `Yes! That was the real photograph.`
         : `Oops — the real photo was on the ${round.realSide === 'left' ? 'left' : 'right'}.`;
+      
+      const nextBtn = banner.querySelector('.next-btn');
+      if (nextBtn) {
+        nextBtn.textContent = 'Interesting! →';
+      }
+      
       banner.classList.add('show');
     }
 
     function nextRound() {
       currentRound++;
-      if (currentRound >= rounds.length) {
-        // All rounds done — you can add a proper end screen here
+      if (currentRound >= activeRounds.length) {
         document.getElementById('result-banner').classList.remove('show');
-        document.getElementById('prompt-text').textContent =
-          `Game over! Final score: ${score} / ${rounds.length}`;
-        document.getElementById('round-label').textContent = 'Finished';
+        document.getElementById('game').style.display = 'none';
+        
+        const scoreboard = document.getElementById('scoreboard');
+        scoreboard.style.display = 'flex';
+        
+        document.getElementById('scoreboard-score').textContent = score;
+        
+        let commentText = '';
+        if (score === 5) {
+          commentText = "Flawless! You have a golden eye for details. AI can't fool you!";
+        } else if (score >= 3) {
+          commentText = "Great job! You spotted most of them, but a few felines tricked you.";
+        } else {
+          commentText = "AI successfully fooled you! Keep practicing to train your human eye.";
+        }
+        document.getElementById('scoreboard-comment').textContent = commentText;
         return;
       }
       loadRound(currentRound);
+    }
+
+    function returnToMenu() {
+      document.getElementById('game').style.display = 'none';
+      document.getElementById('scoreboard').style.display = 'none';
+      document.getElementById('landing').style.display = 'flex';
+      
+      currentRound = 0;
+      score = 0;
+      streak = 0;
+      answered = false;
+      document.getElementById('result-banner').classList.remove('show');
     }
   </script>
 </body>
