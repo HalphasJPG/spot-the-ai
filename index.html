@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spot the AI Image - 1v1</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0b0c0e;
+      --surface:   #13151a;
+      --border:    #1f2229;
+      --accent:    #c8ff00;
+      --accent2:   #ff4ecd;
+      --text:      #eeeef0;
+      --muted:     #6b7280;
+      --real-clr:  #c8ff00;
+      --ai-clr:    #ff4ecd;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.035;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    #landing, #lobby-section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+    }
+
+    #lobby-section { display: none; }
+
+    .lobby-input {
+      padding: 1rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 1.1rem;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+    }
+
+    .lobby-input:focus { outline: 1px solid var(--accent); }
+
+    #landing::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,255,0,0.07) 0%, transparent 70%);
+      top: -150px; left: -200px;
+      pointer-events: none;
+    }
+
+    .blob2 {
+      position: absolute;
+      width: 500px; height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,78,205,0.07) 0%, transparent 70%);
+      bottom: -100px; right: -150px;
+      pointer-events: none;
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.7s ease both;
+    }
+
+    .logo-icon {
+      width: 64px; height: 64px;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1;
+    }
+
+    .logo-text .spot {
+      font-size: 2.6rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    .logo-text .sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .hero-heading {
+      font-size: clamp(2.2rem, 6vw, 4.4rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      text-align: center;
+      max-width: 700px;
+      animation: fadeUp 0.7s 0.1s ease both;
+    }
+
+    .hero-heading em {
+      font-style: normal;
+      position: relative;
+      color: var(--accent);
+    }
+
+    .badges {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: fadeUp 0.7s 0.3s ease both;
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.35rem 0.9rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .badge .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2.75rem;
+      animation: fadeUp 0.7s 0.4s ease both;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .play-btn {
+      position: relative;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .play-btn-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      background: var(--accent);
+      color: #0b0c0e;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: 0.01em;
+      padding: 1rem 2.4rem;
+      border-radius: 4px;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      min-width: 200px;
+    }
+
+    .play-btn-outline .play-btn-inner {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .play-btn:hover .play-btn-inner {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(200,255,0,0.28);
+    }
+
+    .play-btn-outline:hover .play-btn-inner {
+      border-color: var(--accent);
+      box-shadow: 0 12px 40px rgba(255,255,255,0.05);
+    }
+
+    .play-btn:active .play-btn-inner {
+      transform: translateY(0);
+    }
+
+    #lobby-menu { text-align: center; }
+    
+    #host-waiting { 
+      display: none; 
+      flex-direction: column; 
+      align-items: center;
+      text-align: center;
+    }
+
+    #game {
+      display: none;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .topbar-logo svg { width: 28px; height: 28px; }
+
+    .score-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .score-pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--muted);
+    }
+
+    .score-pill span {
+      font-weight: 500;
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    .prompt-bar {
+      text-align: center;
+      padding: 1.5rem 1rem 0.75rem;
+    }
+
+    .round-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .prompt-text {
+      margin-top: 0.4rem;
+      font-size: clamp(1.1rem, 3vw, 1.6rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .cards-area {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      padding: 1.5rem 2rem 2rem;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    .card {
+      position: relative;
+      cursor: pointer;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      margin: 0 0.75rem;
+    }
+
+    .card:hover {
+      border-color: var(--text);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    }
+
+    .card img {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card-footer {
+      padding: 0.85rem 1rem;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-label {
+      font-size: 0.78rem;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    .card-cta {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.3rem 0.75rem;
+      transition: background 0.15s;
+    }
+
+    .card.revealed-correct {
+      border-color: var(--real-clr);
+      box-shadow: 0 0 0 3px rgba(200,255,0,0.25);
+    }
+
+    .card.revealed-wrong {
+      border-color: var(--ai-clr);
+      box-shadow: 0 0 0 3px rgba(255,78,205,0.25);
+    }
+
+    .reveal-tag {
+      position: absolute;
+      top: 12px; left: 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      padding: 4px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .card.revealed-correct .reveal-tag,
+    .card.revealed-wrong .reveal-tag {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-tag.real {
+      background: rgba(200,255,0,0.15);
+      color: var(--real-clr);
+      border: 1px solid rgba(200,255,0,0.3);
+    }
+
+    .reveal-tag.ai {
+      background: rgba(255,78,205,0.15);
+      color: var(--ai-clr);
+      border: 1px solid rgba(255,78,205,0.3);
+    }
+
+    .result-banner {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 100;
+      min-width: 320px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .result-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .result-icon { font-size: 1.8rem; }
+    .result-text strong { font-size: 1rem; font-weight: 800; display: block; }
+    .result-text p { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    .next-btn {
+      margin-left: auto;
+      background: var(--accent);
+      color: #0b0c0e;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: 4px;
+      padding: 0.55rem 1.25rem;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .next-btn:hover { transform: scale(1.04); }
+
+    .text-divider {
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin: 1.5rem 0;
+      font-size: 0.8rem;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      .cards-area { grid-template-columns: 1fr; padding: 1rem; }
+      .card { margin: 0.5rem 0; }
+      .hero-heading { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <section id="landing">
+    <div class="blob2"></div>
+
+    <div class="logo-wrap">
+      <svg class="logo-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="64" height="64" rx="14" fill="#13151a"/>
+        <ellipse cx="32" cy="32" rx="22" ry="14" stroke="#c8ff00" stroke-width="2"/>
+        <circle cx="32" cy="32" r="8" fill="#c8ff00" opacity="0.12" stroke="#c8ff00" stroke-width="1.5"/>
+        <circle cx="32" cy="32" r="3.5" fill="#c8ff00"/>
+        <line x1="40" y1="32" x2="46" y2="32" stroke="#ff4ecd" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="46" y1="32" x2="46" y2="26" stroke="#ff4ecd" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="46" cy="25" r="1.5" fill="#ff4ecd"/>
+        <line x1="24" y1="32" x2="18" y2="32" stroke="#ff4ecd" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="18" y1="32" x2="18" y2="38" stroke="#ff4ecd" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="18" cy="39" r="1.5" fill="#ff4ecd"/>
+      </svg>
+      <div class="logo-text">
+        <span class="spot">Spot the AI</span>
+        <span class="sub">Image Challenge</span>
+      </div>
+    </div>
+
+    <h1 class="hero-heading">Can you tell <em>real</em> from<br/>generated?</h1>
+
+    <div class="badges">
+      <div class="badge"><span class="dot" style="background:var(--real-clr)"></span> Real photo</div>
+      <div class="badge"><span class="dot" style="background:var(--ai-clr)"></span> AI generated</div>
+    </div>
+
+    <div class="button-group">
+      <button class="play-btn" onclick="startSolo()">
+        <div class="play-btn-inner">Play Solo</div>
+      </button>
+      <button class="play-btn play-btn-outline" onclick="showLobby()">
+        <div class="play-btn-inner">1v1 Multiplayer</div>
+      </button>
+    </div>
+  </section>
+
+  <section id="lobby-section">
+    <h2 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 0.5rem;">Multiplayer</h2>
+    
+    <div id="lobby-menu">
+      <p style="color: var(--muted); font-family: 'DM Mono'; margin-bottom: 2rem;">Host a game or join a friend.</p>
+      
+      <button class="play-btn" onclick="createSession()" style="width: 100%;">
+        <div class="play-btn-inner">Create New Room</div>
+      </button>
+      
+      <div class="text-divider">--- OR ---</div>
+      
+      <input type="text" id="session-id" class="lobby-input" placeholder="Enter 4-Letter Code" maxlength="4" />
+      <button class="play-btn play-btn-outline" onclick="joinSession()" style="width: 100%; margin-bottom: 2rem;">
+        <div class="play-btn-inner">Join Room</div>
+      </button>
+      
+      <button class="next-btn" onclick="goBackToMenu()" style="background: var(--surface); border: 1px solid var(--border); color: var(--text); margin: 0 auto; display: block;">← Back to Menu</button>
+    </div>
+
+    <div id="host-waiting">
+      <p style="color: var(--muted); font-family: 'DM Mono';">Share this code with your opponent:</p>
+      <h1 id="room-code-display" style="font-size: 4.5rem; color: var(--accent); letter-spacing: 0.15em; margin: 1rem 0;">----</h1>
+      <p style="margin-bottom: 2rem;">Waiting for them to connect...</p>
+      <button class="next-btn" onclick="goBackToMenu()" style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">Cancel & Back</button>
+    </div>
+
+    <p id="lobby-status" style="margin-top: 1.5rem; color: var(--ai-clr); font-family: 'DM Mono';"></p>
+  </section>
+
+  <div id="game">
+    <div class="topbar">
+      <div class="topbar-logo">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+          <rect width="64" height="64" rx="14" fill="#13151a"/>
+          <ellipse cx="32" cy="32" rx="22" ry="14" stroke="#c8ff00" stroke-width="2"/>
+          <circle cx="32" cy="32" r="8" fill="#c8ff00" opacity="0.12" stroke="#c8ff00" stroke-width="1.5"/>
+          <circle cx="32" cy="32" r="3.5" fill="#c8ff00"/>
+        </svg>
+        Spot the AI
+      </div>
+      <div class="score-wrap">
+        <div class="score-pill">Score <span id="score-val">0</span></div>
+        <div class="score-pill">Streak <span id="streak-val">0</span></div>
+      </div>
+    </div>
+
+    <div class="prompt-bar">
+      <div class="round-label" id="round-label">Round 1</div>
+      <div class="prompt-text" id="prompt-text">Which image is a real photograph?</div>
+    </div>
+
+    <div class="cards-area" id="cards-area">
+      <div class="cards-container" style="position:relative; display:contents;">
+        <div class="card" id="card-left" onclick="handlePick('left')">
+          <div class="reveal-tag real">✓ Real Photo</div>
+          <div class="card-footer">
+            <span class="card-label">Image A</span>
+            <span class="card-cta">This one →</span>
+          </div>
+        </div>
+
+        <div class="card" id="card-right" onclick="handlePick('right')">
+          <div class="reveal-tag ai">✦ AI Generated</div>
+          <div class="card-footer">
+            <span class="card-label">Image B</span>
+            <span class="card-cta">This one →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-banner" id="result-banner">
+      <div class="result-icon" id="result-icon">🎉</div>
+      <div class="result-text">
+        <strong id="result-title">Correct!</strong>
+        <p id="result-desc">That was indeed the real photo.</p>
+      </div>
+      <button class="next-btn" id="next-btn" onclick="nextRound()">Next →</button>
+      <button class="next-btn" id="retry-btn" onclick="goBackToMenu()" style="display: none; background: var(--ai-clr); color: white;">Main Menu ↺</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let currentRoom = '';
+    let isSoloMode = false;
+
+    const rounds = [
+      { realSide:"left",  left:"https://showcase.shubhkamnainstitute.com/media/posts/2025/07/31/1000206876.jpg", right:"https://i.pinimg.com/1200x/ec/b7/29/ecb729759884f4c23bcbb3ffb49a84f1.jpg" },
+      { realSide:"right", left:"https://images.unsplash.com/photo-1518717758536-85ae29035b6d?w=1200&q=90", right:"https://images.unsplash.com/photo-1517849845537-4d257902454a?w=1200&q=90" },
+      { realSide:"left",  left:"https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1200&q=90", right:"https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1200&q=90" },
+      { realSide:"left",  left:"https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=1200&q=90", right:"https://images.unsplash.com/photo-1553621042-f6e147245754?w=1200&q=90" },
+      { realSide:"right", left:"https://images.unsplash.com/photo-1520975916090-3105956dac38?w=1200&q=90", right:"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1200&q=90" }
+    ];
+
+    let currentRound = 0;
+    let score = 0;
+    let streak = 0;
+    let answered = false;
+
+    // ----- NAVIGATION -----
+    function startSolo() {
+      isSoloMode = true;
+      document.getElementById('landing').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      loadRound(0);
+    }
+
+    function showLobby() {
+      isSoloMode = false;
+      document.getElementById('landing').style.display = 'none';
+      document.getElementById('lobby-section').style.display = 'flex';
+      document.getElementById('lobby-menu').style.display = 'block';
+      document.getElementById('host-waiting').style.display = 'none';
+      document.getElementById('lobby-status').textContent = '';
+    }
+
+    function goBackToMenu() {
+      // Refreshing clears socket connections and resets UI state cleanly
+      window.location.reload(); 
+    }
+
+    // ----- MULTIPLAYER SOCKET LOGIC -----
+    function createSession() {
+      socket.emit('createRoom');
+      document.getElementById('lobby-status').textContent = 'Generating code...';
+    }
+
+    function joinSession() {
+      const roomId = document.getElementById('session-id').value.trim();
+      if (!roomId) return;
+      currentRoom = roomId;
+      socket.emit('joinRoom', roomId);
+      document.getElementById('lobby-status').textContent = 'Connecting...';
+    }
+
+    socket.on('roomCreated', (roomId) => {
+      currentRoom = roomId;
+      document.getElementById('lobby-menu').style.display = 'none';
+      document.getElementById('host-waiting').style.display = 'flex';
+      document.getElementById('room-code-display').textContent = roomId;
+      document.getElementById('lobby-status').textContent = '';
+    });
+
+    socket.on('startGame', () => {
+      document.getElementById('lobby-section').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      loadRound(0);
+    });
+
+    socket.on('roomError', (msg) => {
+      document.getElementById('lobby-status').textContent = msg;
+    });
+
+    socket.on('opponentLeft', () => {
+      alert('Your opponent disconnected!');
+      window.location.reload();
+    });
+
+    // ----- GAMEPLAY LOGIC -----
+    function loadRound(index) {
+      answered = false;
+      const round = rounds[index];
+
+      const cardL = document.getElementById('card-left');
+      const cardR = document.getElementById('card-right');
+      cardL.className = 'card';
+      cardR.className = 'card';
+
+      document.getElementById('round-label').textContent = `Round ${index + 1} of ${rounds.length}`;
+      document.getElementById('prompt-text').textContent = `Which image is a real photograph?`;
+
+      setCardImage(cardL, round.left, 'Image A');
+      setCardImage(cardR, round.right, 'Image B');
+
+      document.getElementById('result-banner').classList.remove('show');
+      document.getElementById('next-btn').style.display = 'block';
+      document.getElementById('retry-btn').style.display = 'none';
+    }
+
+    function setCardImage(card, src, label) {
+      const existing = card.querySelector('img.card-img');
+      if (existing) existing.remove();
+      const img = document.createElement('img');
+      img.className = 'card-img';
+      img.src = src;
+      img.alt = label;
+      card.insertBefore(img, card.querySelector('.card-footer'));
+    }
+
+    function handlePick(side) {
+      if (answered) return;
+      answered = true;
+
+      const round = rounds[currentRound];
+      const correct = side === round.realSide;
+      const cardL = document.getElementById('card-left');
+      const cardR = document.getElementById('card-right');
+
+      cardL.classList.add(round.realSide === 'left' ? 'revealed-correct' : 'revealed-wrong');
+      cardR.classList.add(round.realSide === 'right' ? 'revealed-correct' : 'revealed-wrong');
+
+      if (correct) { score++; streak++; } else { streak = 0; }
+      
+      document.getElementById('score-val').textContent = score;
+      document.getElementById('streak-val').textContent = streak;
+
+      const banner = document.getElementById('result-banner');
+      document.getElementById('result-icon').textContent  = correct ? '🎉' : '❌';
+      document.getElementById('result-title').textContent = correct ? 'Correct!' : 'Wrong!';
+      document.getElementById('result-desc').textContent  = correct
+        ? `Yes! That was the real photograph.`
+        : `Oops — the real photo was on the ${round.realSide === 'left' ? 'left' : 'right'}.`;
+      banner.classList.add('show');
+    }
+
+    function nextRound() {
+      currentRound++;
+      if (currentRound >= rounds.length) {
+        
+        if (isSoloMode) {
+          // Finish sequence for Solo players
+          document.getElementById('prompt-text').textContent = `Game over! Final score: ${score} / ${rounds.length}`;
+          document.getElementById('round-label').textContent = 'Finished';
+          
+          const banner = document.getElementById('result-banner');
+          document.getElementById('result-icon').textContent  = '🏁';
+          document.getElementById('result-title').textContent = 'Solo Complete!';
+          document.getElementById('result-desc').textContent  = `You got ${score} out of ${rounds.length} correct.`;
+          
+          document.getElementById('next-btn').style.display = 'none';
+          document.getElementById('retry-btn').style.display = 'block';
+          banner.classList.add('show');
+          
+        } else {
+          // Finish sequence for Multiplayer
+          document.getElementById('prompt-text').textContent = 'Waiting for your opponent to finish...';
+          document.getElementById('round-label').textContent = 'Finished';
+          document.getElementById('cards-area').style.display = 'none';
+          document.getElementById('result-banner').classList.remove('show');
+          
+          socket.emit('finishGame', { roomId: currentRoom, score: score });
+        }
+        return;
+      }
+      loadRound(currentRound);
+    }
+
+    // Displays the final multiplayer result sent by the server
+    socket.on('gameResult', (data) => {
+      const banner = document.getElementById('result-banner');
+      document.getElementById('next-btn').style.display = 'none';
+      document.getElementById('retry-btn').style.display = 'block';
+
+      if (data.status === 'win') {
+        document.getElementById('result-icon').textContent  = '🏆';
+        document.getElementById('result-title').textContent = 'You Won!';
+        document.getElementById('result-desc').textContent  = `You beat your opponent ${data.myScore} to ${data.opScore}.`;
+        
+        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#c8ff00', '#ff4ecd', '#ffffff'] });
+
+      } else if (data.status === 'lose') {
+        document.getElementById('result-icon').textContent  = '💀';
+        document.getElementById('result-title').textContent = 'You Lost!';
+        document.getElementById('result-desc').textContent  = `Your opponent beat you ${data.opScore} to ${data.myScore}.`;
+      } else {
+        document.getElementById('result-icon').textContent  = '🤝';
+        document.getElementById('result-title').textContent = 'It\'s a Tie!';
+        document.getElementById('result-desc').textContent  = `You both scored ${data.myScore} points.`;
+      }
+      
+      banner.classList.add('show');
+    });
+
+  </script>
+</body>
+</html>
