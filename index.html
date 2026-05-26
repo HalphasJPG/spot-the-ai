@@ -698,7 +698,7 @@
     <div class="cards-area" id="cards-area">
       <div class="cards-container" style="position:relative; display:contents;">
         <div class="card" id="card-left" onclick="handlePick('left')">
-          <div class="reveal-tag real">✓ Real Photo</div>
+          <div class="reveal-tag" id="tag-left">✓ Real Photo</div>
           <div class="card-footer">
             <span class="card-label">Image A</span>
             <span class="card-cta">This one →</span>
@@ -706,7 +706,7 @@
         </div>
 
         <div class="card" id="card-right" onclick="handlePick('right')">
-          <div class="reveal-tag ai">✦ AI Generated</div>
+          <div class="reveal-tag" id="tag-right">✦ AI Generated</div>
           <div class="card-footer">
             <span class="card-label">Image B</span>
             <span class="card-cta">This one →</span>
@@ -733,7 +733,7 @@
     <div class="score-card">
       <h2 class="score-title">Challenge Complete</h2>
       <div class="score-subtitle">Scoreboard</div>
-      <div class="score-display"><span id="scoreboard-score">0</span><span>/5</span></div>
+      <div class="score-display"><span id="scoreboard-score">0</span><span>/<span id="scoreboard-total">14</span></span></div>
       <p class="score-comment" id="scoreboard-comment">You've finished the Spot the AI Image challenge!</p>
       
       <div class="score-btns">
@@ -758,49 +758,42 @@
   </section>
 
   <script>
-    const socket = io();
+    // Safe initialization of Socket.io for environment testing (e.g. static Python server)
+    let socket;
+    if (typeof io !== 'undefined') {
+      socket = io();
+    } else {
+      console.warn("Socket.io is not loaded. Multiplayer mode will not work, but Solo mode is fully operational!");
+      socket = {
+        on: function(event, callback) {
+          console.log(`Dummy socket listener registered: ${event}`);
+        },
+        emit: function(event, data) {
+          console.log(`Dummy socket event emitted: ${event}`, data);
+        }
+      };
+    }
     let currentRoom = '';
     let isSoloMode = false;
 
-    // ─────────────────────────────────────────────
-    // GAME DATA
-    // Add your rounds here. Each round has:
-    //   - subject: displayed as the prompt
-    //   - realSide: 'left' or 'right' — which card holds the real photo
-    //   - leftSrc / rightSrc: image URLs
-    // ─────────────────────────────────────────────
-    const rounds = [
-      {
-        subject: "A fluffy cat sitting in dramatic afternoon light",
-        realSide: "left",
-        leftSrc:  "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=700&q=80",
-        rightSrc: "images/cat1_ai.png"
-      },
-      {
-        subject: "A sleek black cat with glowing green eyes on a velvet cushion",
-        realSide: "right",
-        leftSrc:  "images/cat2_ai.png",
-        rightSrc: "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=700&q=80"
-      },
-      {
-        subject: "An orange tabby cat sleeping curled up on a rustic wooden floor",
-        realSide: "left",
-        leftSrc:  "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=700&q=80",
-        rightSrc: "images/cat3_ai.png"
-      },
-      {
-        subject: "A majestic long-haired white cat sitting near a window in the rain",
-        realSide: "right",
-        leftSrc:  "images/cat4_ai.png",
-        rightSrc: "https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?w=700&q=80"
-      },
-      {
-        subject: "A playful kitten chasing a red ball of yarn on a cozy rug",
-        realSide: "left",
-        leftSrc:  "https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=700&q=80",
-        rightSrc: "images/cat5_ai.png"
-      }
+    const baseRounds = [
+      { realSide: "left",  leftSrc: "assets/images/ramen_real.jpg", rightSrc: "assets/images/ramen_ai.png" },
+      { realSide: "right", leftSrc: "assets/images/tokyo_ai.png",   rightSrc: "assets/images/tokyo_real.jpg" },
+      { realSide: "right", leftSrc: "assets/images/cabin_ai.png",   rightSrc: "assets/images/cabin_real.jpg" },
+      { realSide: "left",  leftSrc: "assets/images/portrait_real.jpg", rightSrc: "assets/images/portrait_ai.png" },
+      { realSide: "right", leftSrc: "assets/images/car_ai.png",   rightSrc: "assets/images/car_real.jpg" },
+      { realSide: "left",  leftSrc: "assets/images/cat_real.jpg", rightSrc: "assets/images/cat_ai.png" },
+      { realSide: "right", leftSrc: "assets/images/astronaut_ai.jpg", rightSrc: "assets/images/astronaut_real.jpg" },
+      { realSide: "left",  leftSrc: "assets/images/forest_real.jpg", rightSrc: "assets/images/forest_ai.jpg" },
+      { realSide: "right", leftSrc: "assets/images/alley_ai.jpg", rightSrc: "assets/images/alley_real.jpg" },
+      { realSide: "right", leftSrc: "assets/images/santorini_ai.jpg", rightSrc: "assets/images/santorini_real.jpg" },
+      { realSide: "left",  leftSrc: "assets/images/toast_real.jpg", rightSrc: "assets/images/toast_ai.jpg" },
+      { realSide: "right", leftSrc: "assets/images/watch_ai.jpg", rightSrc: "assets/images/watch_real.jpg" },
+      { realSide: "left",  leftSrc: "assets/images/panda_real.jpg", rightSrc: "assets/images/panda_ai.jpg" },
+      { realSide: "right", leftSrc: "assets/images/room_ai.jpg", rightSrc: "assets/images/room_real.jpg" }
     ];
+
+    const rounds = [];
 
     let currentRound = 0;
     let score = 0;
@@ -809,20 +802,22 @@
     let activeRounds = [];
 
     function shuffleRounds() {
-      activeRounds = rounds.map(r => {
+      // Shuffle baseRounds locally for Solo mode
+      const shuffled = [...baseRounds];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+
+      // Generate activeRounds with dynamic swaps
+      activeRounds = shuffled.map(r => {
         const swap = Math.random() > 0.5;
         return {
-          subject: r.subject,
           realSide: swap ? (r.realSide === 'left' ? 'right' : 'left') : r.realSide,
           leftSrc: swap ? r.rightSrc : r.leftSrc,
           rightSrc: swap ? r.leftSrc : r.rightSrc
         };
       });
-
-      for (let i = activeRounds.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [activeRounds[i], activeRounds[j]] = [activeRounds[j], activeRounds[i]];
-      }
     }
 
     // ----- NAVIGATION -----
@@ -844,6 +839,10 @@
     }
 
     function showLobby() {
+      if (typeof io === 'undefined') {
+        alert("⚠️ Node.js server is not running, so multiplayer is not available. Play Solo Mode, or download and start the Node.js server to play 1v1, bro!");
+        return;
+      }
       isSoloMode = false;
       document.getElementById('landing').style.display = 'none';
       document.getElementById('lobby-section').style.display = 'flex';
@@ -891,10 +890,9 @@
 
       // Construct identical activeRounds from server authoritative configuration
       activeRounds = config.indices.map((idx, i) => {
-        const r = rounds[idx];
+        const r = baseRounds[idx];
         const swap = config.swaps[i];
         return {
-          subject: r.subject,
           realSide: swap ? (r.realSide === 'left' ? 'right' : 'left') : r.realSide,
           leftSrc: swap ? r.rightSrc : r.leftSrc,
           rightSrc: swap ? r.leftSrc : r.rightSrc
@@ -923,10 +921,6 @@
       cardL.className = 'card';
       cardR.className = 'card';
 
-      // Update prompt
-      document.getElementById('round-label').textContent = `Round ${index + 1} of ${activeRounds.length}`;
-      document.getElementById('prompt-text').textContent = 'Which image is real?';
-
       // Set reveal tags dynamically based on which side is the real photo!
       const tagL = cardL.querySelector('.reveal-tag');
       const tagR = cardR.querySelector('.reveal-tag');
@@ -942,6 +936,10 @@
         tagR.textContent = '✓ Real Photo';
       }
 
+      // Update prompt
+      document.getElementById('round-label').textContent = `Round ${index + 1} of ${activeRounds.length}`;
+      document.getElementById('prompt-text').textContent = 'Which image is real?';
+
       // Load images
       setCardImage(cardL, round.leftSrc, 'Image A');
       setCardImage(cardR, round.rightSrc, 'Image B');
@@ -949,6 +947,15 @@
       document.getElementById('result-banner').classList.remove('show');
       document.getElementById('next-btn').style.display = 'block';
       document.getElementById('retry-btn').style.display = 'none';
+
+      // Preload the next round's images to ensure a smooth, premium experience
+      if (index + 1 < activeRounds.length) {
+        const nextRound = activeRounds[index + 1];
+        const imgL = new Image();
+        imgL.src = nextRound.leftSrc;
+        const imgR = new Image();
+        imgR.src = nextRound.rightSrc;
+      }
     }
 
     function setCardImage(card, src, label) {
@@ -1004,11 +1011,12 @@
           scoreboard.style.display = 'flex';
           
           document.getElementById('scoreboard-score').textContent = score;
+          document.getElementById('scoreboard-total').textContent = activeRounds.length;
           
           let commentText = '';
-          if (score === 5) {
+          if (score === activeRounds.length) {
             commentText = "Flawless! You have a golden eye for details. AI can't fool you!";
-          } else if (score >= 3) {
+          } else if (score >= Math.ceil(activeRounds.length * 0.6)) {
             commentText = "Great job! You spotted most of them, but a few felines tricked you.";
           } else {
             commentText = "AI successfully fooled you! Keep practicing to train your human eye.";
@@ -1038,6 +1046,7 @@
       const primaryBtnText = scoreboard.querySelector('.score-btn.primary .score-btn-inner');
 
       scoreDisplayEl.textContent = data.myScore;
+      document.getElementById('scoreboard-total').textContent = activeRounds.length;
       
       if (data.status === 'win') {
         titleEl.textContent = 'You Won! 🏆';

@@ -50,8 +50,9 @@ io.on('connection', (socket) => {
     rooms[roomId].players.push(socket.id);
     socket.join(roomId);
     
-    // Generate a shared, randomized game configuration for the 5 rounds
-    const indices = [0, 1, 2, 3, 4];
+    // Generate a shared, randomized game configuration for all 14 rounds
+    const numRounds = 14;
+    const indices = Array.from({ length: numRounds }, (_, i) => i);
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
