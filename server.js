@@ -50,8 +50,16 @@ io.on('connection', (socket) => {
     rooms[roomId].players.push(socket.id);
     socket.join(roomId);
     
-    // Start the game for both players
-    io.to(roomId).emit('startGame');
+    // Generate a shared, randomized game configuration for the 5 rounds
+    const indices = [0, 1, 2, 3, 4];
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    const swaps = indices.map(() => Math.random() > 0.5);
+    
+    // Start the game for both players with the shared configuration
+    io.to(roomId).emit('startGame', { indices, swaps });
   });
 
   socket.on('finishGame', (data) => {

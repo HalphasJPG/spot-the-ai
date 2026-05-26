@@ -879,9 +879,28 @@
       document.getElementById('lobby-status').textContent = '';
     });
 
-    socket.on('startGame', () => {
+    socket.on('startGame', (config) => {
       document.getElementById('lobby-section').style.display = 'none';
       document.getElementById('game').style.display = 'flex';
+      
+      currentRound = 0;
+      score = 0;
+      streak = 0;
+      document.getElementById('score-val').textContent = score;
+      document.getElementById('streak-val').textContent = streak;
+
+      // Construct identical activeRounds from server authoritative configuration
+      activeRounds = config.indices.map((idx, i) => {
+        const r = rounds[idx];
+        const swap = config.swaps[i];
+        return {
+          subject: r.subject,
+          realSide: swap ? (r.realSide === 'left' ? 'right' : 'left') : r.realSide,
+          leftSrc: swap ? r.rightSrc : r.leftSrc,
+          rightSrc: swap ? r.leftSrc : r.rightSrc
+        };
+      });
+
       loadRound(0);
     });
 
