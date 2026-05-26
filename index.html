@@ -906,8 +906,7 @@
 
       // Update prompt
       document.getElementById('round-label').textContent = `Round ${index + 1} of ${activeRounds.length}`;
-      document.getElementById('prompt-text').textContent =
-        `Which image is a real photograph of: ${round.subject}?`;
+      document.getElementById('prompt-text').textContent = 'Which image is real?';
 
       // Set reveal tags dynamically based on which side is the real photo!
       const tagL = cardL.querySelector('.reveal-tag');
@@ -969,7 +968,7 @@
       
       const nextBtn = banner.querySelector('.next-btn');
       if (nextBtn) {
-        nextBtn.textContent = 'Interesting! →';
+        nextBtn.textContent = 'Next Round! →';
       }
       
       banner.classList.add('show');
