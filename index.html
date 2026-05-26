@@ -986,7 +986,7 @@
       document.getElementById('streak-val').textContent = streak;
 
       const banner = document.getElementById('result-banner');
-      document.getElementById('result-icon').textContent  = '🤔';
+      document.getElementById('result-icon').textContent  = correct ? '😊' : '😢';
       document.getElementById('result-title').textContent = correct ? 'Correct!' : 'Wrong!';
       document.getElementById('result-desc').textContent  = correct
         ? `Yes! That was the real photograph.`
@@ -994,7 +994,8 @@
       
       const nextBtn = banner.querySelector('.next-btn');
       if (nextBtn) {
-        nextBtn.textContent = 'Next Round! →';
+        const isLastRound = currentRound === activeRounds.length - 1;
+        nextBtn.textContent = isLastRound ? 'Show Result! →' : 'Next Round! →';
       }
       
       banner.classList.add('show');
