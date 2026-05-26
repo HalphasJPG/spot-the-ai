@@ -50,8 +50,16 @@ io.on('connection', (socket) => {
     rooms[roomId].players.push(socket.id);
     socket.join(roomId);
     
-    // Start the game for both players
-    io.to(roomId).emit('startGame');
+    // Shuffle the rounds (indices [0..5] for our 6 local custom rounds)
+    const numRounds = 6;
+    const roundIndices = Array.from({ length: numRounds }, (_, i) => i);
+    for (let i = roundIndices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [roundIndices[i], roundIndices[j]] = [roundIndices[j], roundIndices[i]];
+    }
+
+    // Start the game for both players with synchronized round order
+    io.to(roomId).emit('startGame', { roundIndices });
   });
 
   socket.on('finishGame', (data) => {

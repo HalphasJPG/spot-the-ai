@@ -561,7 +561,7 @@
     <div class="cards-area" id="cards-area">
       <div class="cards-container" style="position:relative; display:contents;">
         <div class="card" id="card-left" onclick="handlePick('left')">
-          <div class="reveal-tag real">✓ Real Photo</div>
+          <div class="reveal-tag" id="tag-left">✓ Real Photo</div>
           <div class="card-footer">
             <span class="card-label">Image A</span>
             <span class="card-cta">This one →</span>
@@ -569,7 +569,7 @@
         </div>
 
         <div class="card" id="card-right" onclick="handlePick('right')">
-          <div class="reveal-tag ai">✦ AI Generated</div>
+          <div class="reveal-tag" id="tag-right">✦ AI Generated</div>
           <div class="card-footer">
             <span class="card-label">Image B</span>
             <span class="card-cta">This one →</span>
@@ -590,17 +590,42 @@
   </div>
 
   <script>
-    const socket = io();
+    // Safe initialization of Socket.io for environment testing (e.g. static Python server)
+    let socket;
+    if (typeof io !== 'undefined') {
+      socket = io();
+    } else {
+      console.warn("Socket.io is not loaded. Multiplayer mode will not work, but Solo mode is fully operational!");
+      socket = {
+        on: function(event, callback) {
+          console.log(`Dummy socket listener registered: ${event}`);
+        },
+        emit: function(event, data) {
+          console.log(`Dummy socket event emitted: ${event}`, data);
+        }
+      };
+    }
     let currentRoom = '';
     let isSoloMode = false;
 
-    const rounds = [
-      { realSide:"left",  left:"https://showcase.shubhkamnainstitute.com/media/posts/2025/07/31/1000206876.jpg", right:"https://i.pinimg.com/1200x/ec/b7/29/ecb729759884f4c23bcbb3ffb49a84f1.jpg" },
-      { realSide:"right", left:"https://images.unsplash.com/photo-1518717758536-85ae29035b6d?w=1200&q=90", right:"https://images.unsplash.com/photo-1517849845537-4d257902454a?w=1200&q=90" },
-      { realSide:"left",  left:"https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1200&q=90", right:"https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1200&q=90" },
-      { realSide:"left",  left:"https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=1200&q=90", right:"https://images.unsplash.com/photo-1553621042-f6e147245754?w=1200&q=90" },
-      { realSide:"right", left:"https://images.unsplash.com/photo-1520975916090-3105956dac38?w=1200&q=90", right:"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1200&q=90" }
+    const baseRounds = [
+      { realSide: "left",  left: "assets/images/ramen_real.jpg", right: "assets/images/ramen_ai.png" },
+      { realSide: "right", left: "assets/images/tokyo_ai.png",   right: "assets/images/tokyo_real.jpg" },
+      { realSide: "right", left: "assets/images/cabin_ai.png",   right: "assets/images/cabin_real.jpg" },
+      { realSide: "left",  left: "assets/images/portrait_real.jpg", right: "assets/images/portrait_ai.png" },
+      { realSide: "right", left: "assets/images/car_ai.png",   right: "assets/images/car_real.jpg" },
+      { realSide: "left",  left: "assets/images/cat_real.jpg", right: "assets/images/cat_ai.png" },
+      { realSide: "right", left: "assets/images/astronaut_ai.jpg", right: "assets/images/astronaut_real.jpg" },
+      { realSide: "left",  left: "assets/images/forest_real.jpg", right: "assets/images/forest_ai.jpg" },
+      { realSide: "right", left: "assets/images/alley_ai.jpg", right: "assets/images/alley_real.jpg" },
+      { realSide: "right", left: "assets/images/santorini_ai.jpg", right: "assets/images/santorini_real.jpg" },
+      { realSide: "left",  left: "assets/images/toast_real.jpg", right: "assets/images/toast_ai.jpg" },
+      { realSide: "right", left: "assets/images/watch_ai.jpg", right: "assets/images/watch_real.jpg" },
+      { realSide: "left",  left: "assets/images/panda_real.jpg", right: "assets/images/panda_ai.jpg" },
+      { realSide: "right", left: "assets/images/room_ai.jpg", right: "assets/images/room_real.jpg" }
     ];
+
+    const rounds = [];
 
     let currentRound = 0;
     let score = 0;
@@ -612,10 +637,24 @@
       isSoloMode = true;
       document.getElementById('landing').style.display = 'none';
       document.getElementById('game').style.display = 'flex';
+      
+      // Shuffle baseRounds locally for Solo mode
+      const shuffled = [...baseRounds];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      rounds.length = 0;
+      shuffled.forEach(r => rounds.push(r));
+
       loadRound(0);
     }
 
     function showLobby() {
+      if (typeof io === 'undefined') {
+        alert("⚠️ Node.js server is not running, so multiplayer is not available. Play Solo Mode, or download and start the Node.js server to play 1v1, bro!");
+        return;
+      }
       isSoloMode = false;
       document.getElementById('landing').style.display = 'none';
       document.getElementById('lobby-section').style.display = 'flex';
@@ -651,9 +690,21 @@
       document.getElementById('lobby-status').textContent = '';
     });
 
-    socket.on('startGame', () => {
+    socket.on('startGame', (data) => {
       document.getElementById('lobby-section').style.display = 'none';
       document.getElementById('game').style.display = 'flex';
+      
+      // Synchronize round order from the server
+      rounds.length = 0;
+      if (data && data.roundIndices) {
+        data.roundIndices.forEach(idx => {
+          rounds.push(baseRounds[idx]);
+        });
+      } else {
+        // Fallback if no indices received
+        baseRounds.forEach(r => rounds.push(r));
+      }
+
       loadRound(0);
     });
 
@@ -676,6 +727,21 @@
       cardL.className = 'card';
       cardR.className = 'card';
 
+      // Update the reveal tags dynamically based on the actual round data
+      const tagL = document.getElementById('tag-left');
+      const tagR = document.getElementById('tag-right');
+      if (round.realSide === 'left') {
+        tagL.className = 'reveal-tag real';
+        tagL.textContent = '✓ Real Photo';
+        tagR.className = 'reveal-tag ai';
+        tagR.textContent = '✦ AI Generated';
+      } else {
+        tagL.className = 'reveal-tag ai';
+        tagL.textContent = '✦ AI Generated';
+        tagR.className = 'reveal-tag real';
+        tagR.textContent = '✓ Real Photo';
+      }
+
       document.getElementById('round-label').textContent = `Round ${index + 1} of ${rounds.length}`;
       document.getElementById('prompt-text').textContent = `Which image is a real photograph?`;
 
@@ -685,6 +751,15 @@
       document.getElementById('result-banner').classList.remove('show');
       document.getElementById('next-btn').style.display = 'block';
       document.getElementById('retry-btn').style.display = 'none';
+
+      // Preload the next round's images to ensure a smooth, premium experience
+      if (index + 1 < rounds.length) {
+        const nextRound = rounds[index + 1];
+        const imgL = new Image();
+        imgL.src = nextRound.left;
+        const imgR = new Image();
+        imgR.src = nextRound.right;
+      }
     }
 
     function setCardImage(card, src, label) {
