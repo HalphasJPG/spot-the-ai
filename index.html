@@ -737,7 +737,7 @@
       <p class="score-comment" id="scoreboard-comment">You've finished the Spot the AI Image challenge!</p>
       
       <div class="score-btns">
-        <button class="score-btn primary" onclick="startGame()">
+        <button class="score-btn primary" onclick="startSolo()">
           <div class="score-btn-inner">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"></path>
@@ -792,7 +792,7 @@
         subject: "A majestic long-haired white cat sitting near a window in the rain",
         realSide: "right",
         leftSrc:  "images/cat4_ai.png",
-        rightSrc: "https://images.unsplash.com/photo-1513360309081-36f5e878fc9e?w=700&q=80"
+        rightSrc: "https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?w=700&q=80"
       },
       {
         subject: "A playful kitten chasing a red ball of yarn on a cozy rug",
@@ -908,6 +908,21 @@
       document.getElementById('round-label').textContent = `Round ${index + 1} of ${activeRounds.length}`;
       document.getElementById('prompt-text').textContent =
         `Which image is a real photograph of: ${round.subject}?`;
+
+      // Set reveal tags dynamically based on which side is the real photo!
+      const tagL = cardL.querySelector('.reveal-tag');
+      const tagR = cardR.querySelector('.reveal-tag');
+      if (round.realSide === 'left') {
+        tagL.className = 'reveal-tag real';
+        tagL.textContent = '✓ Real Photo';
+        tagR.className = 'reveal-tag ai';
+        tagR.textContent = '✦ AI Generated';
+      } else {
+        tagL.className = 'reveal-tag ai';
+        tagL.textContent = '✦ AI Generated';
+        tagR.className = 'reveal-tag real';
+        tagR.textContent = '✓ Real Photo';
+      }
 
       // Load images
       setCardImage(cardL, round.leftSrc, 'Image A');
